@@ -1,0 +1,15 @@
+# Run for local insallation
+numpy
+pandas
+scikit-learn
+seaborn
+plotly==5.20.0
+scipy
+matplotlib
+Jinja2==2.10
+yapf==0.25.0
+typing_extensions==4.1.1
+XlsxWriter==1.0.5
+statsmodels
+openpyxl
+dataclasses
