@@ -47,32 +47,45 @@ def create_age_bins(df: pd.DataFrame) -> pd.DataFrame:
 
 def calc_visit_change(df: pd.DataFrame) -> pd.DataFrame:
     # Calculate the change in gym visit frequency from the last 2 weeks to the last 6 weeks
-    df['GymVisitChange_2W_to_6W'] = df['GymVisitsLast6W'] - (
+    df['GymVisitDiff_2W_to_6W'] = df['GymVisitsLast6W'] - (
         df['GymVisitsLast2W'])
     # Calculate the change in gym visit frequency from the last 6 weeks to the last 12 weeks
-    df['GymVisitChange_6W_to_12W'] = df['GymVisitsLast12W'] - (
+    df['GymVisitDiff_6W_to_12W'] = df['GymVisitsLast12W'] - (
         df['GymVisitsLast6W'])
+
+    epsilon = 1e-6
+    # Calculate the change in gym visit frequency from the last 2 weeks to the last 6 weeks
+    df['GymVisitRatio_2W_to_6W'] = df['GymVisitsLast2W'] / (
+        df['GymVisitsLast6W'] + epsilon)
+    # Calculate the change in gym visit frequency from the last 6 weeks to the last 12 weeks
+    df['GymVisitRatio_6W_to_12W'] = df['GymVisitsLast6W'] / (
+        df['GymVisitsLast12W'] + epsilon)
+
+    print("We use both difference and ratio methods.\n"
+    "Diff: directly shows the increase or decrease in gym visits, making it easy to identify trends or sudden changes in behavior.\n"
+    "Ratio: The ratio provides a sense of proportion, showing how gym visits have changed relative to a previous period. \n This can be more meaningful when comparing across members with different levels of overall activity.")
     return df
 
 
 def calc_engagement_score(data: pd.DataFrame) -> pd.DataFrame:
     df = data.copy()
-    
+
     # Aggregate data per member by averaging the engagement-related metrics
     member_aggregated = df.groupby('MemberID')[[
-        'AppUsage', 'GymVisitsLast2W', 'GymVisitsLast6W', 'GymVisitsLast12W',
-        'GymVisitChange_2W_to_6W', 'GymVisitChange_6W_to_12W'
+        'AppUsage', 'GymVisitRatio_2W_to_6W', 'GymVisitRatio_6W_to_12W',
+        'GymVisitDiff_2W_to_6W', 'GymVisitDiff_6W_to_12W'
     ]].mean().reset_index()
-    
+
     # Normalize the components
     scaler = MinMaxScaler()
     components_aggregated_normalized = scaler.fit_transform(member_aggregated[[
-        'AppUsage', 'GymVisitsLast2W', 'GymVisitsLast6W', 'GymVisitsLast12W',
-        'GymVisitChange_2W_to_6W', 'GymVisitChange_6W_to_12W'
+        'AppUsage', 'GymVisitRatio_2W_to_6W', 'GymVisitRatio_6W_to_12W',
+        'GymVisitDiff_2W_to_6W', 'GymVisitDiff_6W_to_12W'
     ]])
 
     # Calculate the Engagement Score as the mean of the normalized components
-    member_aggregated['EngagementScore'] = components_aggregated_normalized.mean(axis=1)
+    member_aggregated[
+        'EngagementScore'] = components_aggregated_normalized.mean(axis=1)
 
     # Categorize the Engagement Score into 'Low', 'Medium', 'High'
     score_bins = [0, 1 / 3, 2 / 3, 1]
@@ -82,10 +95,28 @@ def calc_engagement_score(data: pd.DataFrame) -> pd.DataFrame:
         bins=score_bins,
         labels=score_labels,
         include_lowest=True)
-    
+
     # Merge the aggregated engagement data back into the original DataFrame
     # This retains all original features and adds the 'EngagementScore' and 'EngagementCategory'
-    merged_df = pd.merge(df, member_aggregated[['MemberID', 'EngagementScore', 'EngagementCategory']],
-                         on='MemberID', how='left')
-    
+    merged_df = pd.merge(df,
+                         member_aggregated[['MemberID', 'EngagementCategory']],
+                         on='MemberID',
+                         how='left')
+
+    print(
+        "Note: The aggregation is performed to each member, buy the normalization is done across all members for each metric!"
+    )
     return merged_df
+
+
+def create_categorical_encoding(data: pd.DataFrame) -> pd.DataFrame:
+    df = pd.get_dummies(data,
+                        columns=['DEXAScanResult', 'OutReachOutcome'],
+                        drop_first=True)
+    # Define the mapping that reflects the order of the categories
+    engagement_mapping = {'Low': 0, 'Medium': 1, 'High': 2}
+
+    # Apply this mapping to the 'EngagementCategory' column
+    df['EngagementCategory'] = df['EngagementCategory'].map(engagement_mapping)
+    print("Note: We use one-hot encoding and ordinal encdoing in this method")
+    return df
