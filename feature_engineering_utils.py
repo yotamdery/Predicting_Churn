@@ -55,24 +55,37 @@ def calc_visit_change(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def calc_engagement_score(df: pd.DataFrame) -> pd.DataFrame:
+def calc_engagement_score(data: pd.DataFrame) -> pd.DataFrame:
+    df = data.copy()
+    
     # Aggregate data per member by averaging the engagement-related metrics
     member_aggregated = df.groupby('MemberID')[[
         'AppUsage', 'GymVisitsLast2W', 'GymVisitsLast6W', 'GymVisitsLast12W',
         'GymVisitChange_2W_to_6W', 'GymVisitChange_6W_to_12W'
     ]].mean().reset_index()
+    
     # Normalize the components
     scaler = MinMaxScaler()
-    components_aggregated_normalized = scaler.fit_transform(member_aggregated[['AppUsage', 'GymVisitsLast2W', 'GymVisitsLast6W', 'GymVisitsLast12W', 'GymVisitChange_2W_to_6W', 'GymVisitChange_6W_to_12W']])
-    
+    components_aggregated_normalized = scaler.fit_transform(member_aggregated[[
+        'AppUsage', 'GymVisitsLast2W', 'GymVisitsLast6W', 'GymVisitsLast12W',
+        'GymVisitChange_2W_to_6W', 'GymVisitChange_6W_to_12W'
+    ]])
+
     # Calculate the Engagement Score as the mean of the normalized components
     member_aggregated['EngagementScore'] = components_aggregated_normalized.mean(axis=1)
 
     # Categorize the Engagement Score into 'Low', 'Medium', 'High'
-    score_bins = [0, 1/3, 2/3, 1]
+    score_bins = [0, 1 / 3, 2 / 3, 1]
     score_labels = ['Low', 'Medium', 'High']
-    member_aggregated['EngagementCategory'] = pd.cut(member_aggregated['EngagementScore'],
-                                                    bins=score_bins,
-                                                    labels=score_labels,
-                                                    include_lowest=True)
-    return member_aggregated
+    member_aggregated['EngagementCategory'] = pd.cut(
+        member_aggregated['EngagementScore'],
+        bins=score_bins,
+        labels=score_labels,
+        include_lowest=True)
+    
+    # Merge the aggregated engagement data back into the original DataFrame
+    # This retains all original features and adds the 'EngagementScore' and 'EngagementCategory'
+    merged_df = pd.merge(df, member_aggregated[['MemberID', 'EngagementScore', 'EngagementCategory']],
+                         on='MemberID', how='left')
+    
+    return merged_df
