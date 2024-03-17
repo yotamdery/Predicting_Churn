@@ -1,4 +1,4 @@
-## Steps to correctly install the dependent libraries
+## Steps to correctly install the dependent libraries on local machine
 1. `git clone https://github.com/yotamdery/Predicting_Churn.git`
 2. `python3.8 -m venv .venv`
 (That's the python version used for this project)
