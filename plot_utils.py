@@ -158,8 +158,9 @@ def plot_trend_analysis(df: pd.DataFrame):
     data = df.copy()
     data.set_index('EffectiveDate', inplace=True)
 
-    # Resampling data on a weekly basis, starting from the first date and averaging the values
-    weekly_aggregated_data = data.resample('W-MON').mean()
+    # Aggregating data by week for mean and median
+    weekly_mean_data = data.resample('W-MON').mean()
+    weekly_median_data = data.resample('W-MON').median()
 
     # Now, let's try plotting the trends again with this weekly aggregated data
 
@@ -175,8 +176,8 @@ def plot_trend_analysis(df: pd.DataFrame):
                         'Weekly Average Churn in 30 Days'))
 
     # App Usage Trend
-    weekly_trend_fig.add_trace(go.Scatter(x=weekly_aggregated_data.index,
-                                          y=weekly_aggregated_data['AppUsage'],
+    weekly_trend_fig.add_trace(go.Scatter(x=weekly_mean_data.index,
+                                          y=weekly_mean_data['AppUsage'],
                                           mode='lines+markers',
                                           name='Weekly Avg App Usage'),
                                row=1,
@@ -184,8 +185,8 @@ def plot_trend_analysis(df: pd.DataFrame):
 
     # Gym Visits in Last 2 Weeks Trend
     weekly_trend_fig.add_trace(go.Scatter(
-        x=weekly_aggregated_data.index,
-        y=weekly_aggregated_data['GymVisitsLast2W'],
+        x=weekly_mean_data.index,
+        y=weekly_mean_data['GymVisitsLast2W'],
         mode='lines+markers',
         name='Weekly Avg Gym Visits Last 2W'),
                                row=2,
@@ -193,8 +194,8 @@ def plot_trend_analysis(df: pd.DataFrame):
 
     # Gym Visits in Last 6 Weeks Trend
     weekly_trend_fig.add_trace(go.Scatter(
-        x=weekly_aggregated_data.index,
-        y=weekly_aggregated_data['GymVisitsLast6W'],
+        x=weekly_mean_data.index,
+        y=weekly_mean_data['GymVisitsLast6W'],
         mode='lines+markers',
         name='Weekly Avg Gym Visits Last 6W'),
                                row=3,
@@ -202,19 +203,68 @@ def plot_trend_analysis(df: pd.DataFrame):
 
     # Gym Visits in Last 12 Weeks Trend
     weekly_trend_fig.add_trace(go.Scatter(
-        x=weekly_aggregated_data.index,
-        y=weekly_aggregated_data['GymVisitsLast12W'],
+        x=weekly_mean_data.index,
+        y=weekly_mean_data['GymVisitsLast12W'],
         mode='lines+markers',
         name='Weekly Avg Gym Visits Last 12W'),
                                row=4,
                                col=1)
 
     # Churn in 30 Days Trend
+    weekly_trend_fig.add_trace(go.Scatter(x=weekly_mean_data.index,
+                                          y=weekly_mean_data['ChurnIn30Days'],
+                                          mode='lines+markers',
+                                          name='Weekly Avg Churn in 30 Days'),
+                               row=5,
+                               col=1)
+
+    # Adding traces for median values
+    # App Usage Median
+    weekly_trend_fig.add_trace(go.Scatter(x=weekly_median_data.index,
+                                          y=weekly_median_data['AppUsage'],
+                                          mode='lines+markers',
+                                          name='Weekly Median App Usage',
+                                          line=dict(dash='dash')),
+                               row=1,
+                               col=1)
+
+    # Gym Visits Last 2W Median
     weekly_trend_fig.add_trace(go.Scatter(
-        x=weekly_aggregated_data.index,
-        y=weekly_aggregated_data['ChurnIn30Days'],
+        x=weekly_median_data.index,
+        y=weekly_median_data['GymVisitsLast2W'],
         mode='lines+markers',
-        name='Weekly Avg Churn in 30 Days'),
+        name='Weekly Median Gym Visits Last 2W',
+        line=dict(dash='dash')),
+                               row=2,
+                               col=1)
+
+    # Gym Visits Last 6W Median
+    weekly_trend_fig.add_trace(go.Scatter(
+        x=weekly_median_data.index,
+        y=weekly_median_data['GymVisitsLast6W'],
+        mode='lines+markers',
+        name='Weekly Median Gym Visits Last 6W',
+        line=dict(dash='dash')),
+                               row=3,
+                               col=1)
+
+    # Gym Visits Last 12W Median
+    weekly_trend_fig.add_trace(go.Scatter(
+        x=weekly_median_data.index,
+        y=weekly_median_data['GymVisitsLast12W'],
+        mode='lines+markers',
+        name='Weekly Median Gym Visits Last 12W',
+        line=dict(dash='dash')),
+                               row=4,
+                               col=1)
+
+    # Churn in 30 Days Median
+    weekly_trend_fig.add_trace(go.Scatter(
+        x=weekly_median_data.index,
+        y=weekly_median_data['ChurnIn30Days'],
+        mode='lines+markers',
+        name='Weekly Median Churn in 30 Days',
+        line=dict(dash='dash')),
                                row=5,
                                col=1)
 

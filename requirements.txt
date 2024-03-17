@@ -3,6 +3,7 @@ ipykernel
 numpy
 pandas==1.5.1
 scikit-learn
+xgboost
 seaborn
 plotly==5.20.0
 scipy
