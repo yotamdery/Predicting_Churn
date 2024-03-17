@@ -58,28 +58,29 @@ def create_time_series_splits(df: pd.DataFrame) -> List[Tuple]:
     return splits
 
 
-def calc_AppUsage_median_per_week(data: pd.DataFrame) -> pd.Series:
-    df = data.copy()
-    # Set the date to the beginning of the week for each entry
-    df['Week'] = df['EffectiveDate'] - pd.to_timedelta(
-        df['EffectiveDate'].dt.dayofweek, unit='d')
-    series_res = df.groupby('Week')['AppUsage'].median().reset_index(
-        name='MedianAppUsage')
-    return series_res
+# def calc_AppUsage_median_per_week(data: pd.DataFrame) -> pd.Series:
+#     df = data.copy()
+#     # Set the date to the beginning of the week for each entry
+#     df['Week'] = df['EffectiveDate'] - pd.to_timedelta(
+#         df['EffectiveDate'].dt.dayofweek, unit='d')
+#     series_res = df.groupby('Week')['AppUsage'].median().reset_index(
+#         name='MedianAppUsage')
+#     return series_res
 
 
-def calc_diff_median_app_usage_per_user_per_week(data: pd.DataFrame, weekly_median_app_usage: pd.Series=None) -> pd.DataFrame:
+def calc_diff_median_app_usage_per_user_per_week(
+        data: pd.DataFrame) -> pd.DataFrame:
 
-    # Group by the new 'Week' column to calculate the median 'AppUsage' per week
-    if weekly_median_app_usage is None:
-        # Calc if not provided
-        weekly_median_app_usage = data.groupby(
-            'Week')['AppUsage'].median().reset_index(name='MedianAppUsage')
+    data['Week'] = data['EffectiveDate'] - pd.to_timedelta(
+        data['EffectiveDate'].dt.dayofweek, unit='d')
+
+    weekly_median_app_usage = data.groupby(
+        'Week')['AppUsage'].median().reset_index(name='MedianAppUsage')
 
     # Merge the median values back with the original dataset
     data_with_median = data.merge(weekly_median_app_usage,
                                   on='Week',
-                                  how='left')
+                                  how='inner')
 
     # Calculate the difference between each member's 'AppUsage' and the weekly median
     data_with_median['AppUsageDiffFromMedian'] = data_with_median[
@@ -122,11 +123,6 @@ def calc_visit_change(df: pd.DataFrame) -> pd.DataFrame:
     df['GymVisitRatio_6W_to_12W'] = df['GymVisitsLast6W'] / (
         df['GymVisitsLast12W'] + epsilon)
 
-    print(
-        "In calc_visit_change, We use both difference and ratio methods.\n"
-        "Diff: directly shows the increase or decrease in gym visits, making it easy to identify trends or sudden changes in behavior.\n"
-        "Ratio: The ratio provides a sense of proportion, showing how gym visits have changed relative to a previous period. \n This can be more meaningful when comparing across members with different levels of overall activity.\n"
-    )
     return df
 
 
@@ -156,15 +152,11 @@ def calc_engagement_score(data: pd.DataFrame,
                           member_aggregated: pd.DataFrame = None,
                           scaler: MinMaxScaler = None) -> pd.DataFrame:
     df = data.copy()
-    if member_aggregated is None:
-        # Calculate mean values if not provided (for X_train)
-        member_aggregated = df.groupby('MemberID')[[
-            'AppUsage', 'GymVisitRatio_2W_to_6W', 'GymVisitRatio_6W_to_12W',
-            'GymVisitDiff_2W_to_6W', 'GymVisitDiff_6W_to_12W'
-        ]].mean().reset_index()
-    else:
-        # Use provided mean values (for X_test)
-        df = pd.merge(df, member_aggregated, on='MemberID', how='left')
+    # Calculate mean values if not provided (for X_train)
+    member_aggregated = df.groupby('MemberID')[[
+        'AppUsage', 'GymVisitRatio_2W_to_6W', 'GymVisitRatio_6W_to_12W',
+        'GymVisitDiff_2W_to_6W', 'GymVisitDiff_6W_to_12W'
+    ]].mean().reset_index()
 
     if scaler is None:
         # Fit scaler if not provided (for X_train)
@@ -173,10 +165,12 @@ def calc_engagement_score(data: pd.DataFrame,
             member_aggregated.iloc[:, 1:])
     else:
         # Use provided scaler to transform data (for X_test)
-        components_aggregated_normalized = scaler.transform(member_aggregated.iloc[:, 1:])
+        components_aggregated_normalized = scaler.transform(
+            member_aggregated.iloc[:, 1:])
     # Calculate the Engagement Score as the mean of the normalized components
     member_aggregated[
         'EngagementScore'] = components_aggregated_normalized.mean(axis=1)
+    member_aggregated['EngagementScore'] = member_aggregated['EngagementScore'].clip(lower=0)
 
     # Categorize the Engagement Score into 'Low', 'Medium', 'High'
     score_bins = [0, 1 / 3, 2 / 3, 1]
@@ -189,27 +183,24 @@ def calc_engagement_score(data: pd.DataFrame,
 
     # Merge the aggregated engagement data back into the original DataFrame
     # This retains all original features and adds the 'EngagementScore' and 'EngagementCategory'
+    # We perform inner join as some members in the test set have no samples in the training set
     merged_df = pd.merge(df,
                          member_aggregated[['MemberID', 'EngagementCategory']],
                          on='MemberID',
-                         how='left')
+                         how='inner')
 
-    print(
-        "Note: In calc_engagement_score, the aggregation is performed to each member, but the normalization is done across all members for each metric!\n"
-    )
     return merged_df
 
 
 def create_categorical_encoding(data: pd.DataFrame) -> pd.DataFrame:
     # Disatvantage: get_dummies on all data assumes that the categories are the same for every week/run, and this is not happening always after train/test split
     # I assume fixed data for the simplicity. in real world applications, I'd probably need to do the train/test split before the get dummies.
-    df = pd.get_dummies(data,
-                        columns=['DEXAScanResult', 'OutReachOutcome'],
+    data= pd.get_dummies(data,
+                        columns=['BMI_Category', 'DEXAScanResult', 'OutReachOutcome'],
                         drop_first=True)
     # Define the mapping that reflects the order of the categories
     engagement_mapping = {'Low': 0, 'Medium': 1, 'High': 2}
 
     # Apply this mapping to the 'EngagementCategory' column
-    df['EngagementCategory'] = df['EngagementCategory'].map(engagement_mapping)
-    print("Note: in create_categorical_encoding, we use one-hot encoding and ordinal encdoing in this method\n")
-    return df
+    data['EngagementCategory'] = data['EngagementCategory'].map(engagement_mapping).astype(int)
+    return data
