@@ -36,10 +36,8 @@ def plot_OutReachOutcome_by_Outreach_Attempt(df_outreach_0: pd.DataFrame,
         font=dict(size=18))
 
     # Update x-axis titles for each subplot individually
-    fig.update_xaxes(title_text='OutReachOutcome Value', row=1,
-                     col=1)  # Update for the first subplot
-    fig.update_xaxes(title_text='OutReachOutcome Value', row=1,
-                     col=2)  # Update for the second subplot
+    fig.update_xaxes(title_text='', row=1, col=1)  # Update for the first subplot
+    fig.update_xaxes(title_text='', row=1, col=2)  # Update for the second subplot
 
     fig.show()
 

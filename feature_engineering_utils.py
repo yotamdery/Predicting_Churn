@@ -137,15 +137,12 @@ def calc_statistics_and_norm_object_engagement_score(data: pd.DataFrame):
 
     # Normalize the components
     scaler = MinMaxScaler()
-    components_aggregated_normalized = scaler.fit_transform(member_aggregated[[
+    scaler.fit_transform(member_aggregated[[
         'AppUsage', 'GymVisitRatio_2W_to_6W', 'GymVisitRatio_6W_to_12W',
         'GymVisitDiff_2W_to_6W', 'GymVisitDiff_6W_to_12W'
     ]])
 
-    # Calculate the Engagement Score as the mean of the normalized components
-    member_aggregated[
-        'EngagementScore'] = components_aggregated_normalized.mean(axis=1)
-    return member_aggregated, scaler
+    return scaler
 
 
 def calc_engagement_score(data: pd.DataFrame,
